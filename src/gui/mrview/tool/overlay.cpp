@@ -745,7 +745,10 @@ namespace MR
             + Option ("overlay.no_threshold_max", "Disable the upper threshold for the overlay").allow_multiple()
 
             + Option ("overlay.interpolation", "Enable or disable overlay image interpolation.").allow_multiple()
-            +   Argument ("value").type_bool();
+            +   Argument ("value").type_bool()
+
+            + Option("overlay.vol_index", "Sets the volume index of the overlay when it is a 4D.").allow_multiple()
+            +   Argument ("index").type_integer();
 
         }
 
@@ -842,6 +845,27 @@ namespace MR
           if (opt.opt->is ("overlay.interpolation")) {
             interpolate_check_box->setCheckState (bool(opt[0]) ? Qt::Checked : Qt::Unchecked);
             interpolate_changed();
+            return true;
+          }
+
+          if (opt.opt->is ("overlay.vol_index")) {
+            try {
+              int n = opt[0];
+              if (n < 0)
+                throw Exception ("invalid overlay volume index \"" + std::string (opt[0]) + "\" for -overlay.volume_index option");
+            }
+            catch (Exception& e) { e.display(); }
+            update_selection();
+            QModelIndexList indices = image_list_view->selectionModel()->selectedIndexes();
+            if (indices.size() == 1) {
+              Image* overlay = dynamic_cast<Image*> (image_list_model->get_image (indices[0]));
+              if (overlay->image.ndim() != 4)
+                throw Exception ("invalid overlay dimension, it must be 4D for -overlay.vol_index option");
+              if (int(opt[0]) > overlay->image.size(3))
+                throw Exception ("invalid vol_index, exceeding 4th dimension size");
+              overlay->image.index(3) = opt[0];
+              update_selection();
+            }
             return true;
           }
 
